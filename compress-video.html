@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сжать видео онлайн</title>
+<meta name="description" content="Сжимай видео прямо в&nbsp;браузере: слайдер качества, на&nbsp;100% — без перекодирования, только оптимизация. MP4, WebM, MOV. Файлы не уходят на сервер">
+<meta name="keywords" content="сжать видео онлайн, уменьшить размер видео, сжатие MP4, WebM, MOV">
+<meta name="author" content="Rafael Mansurov">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://rafael-mansurov.github.io/browser-tools/compress-video.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://rafael-mansurov.github.io/browser-tools/compress-video.html">
+<meta property="og:title" content="Сжать видео онлайн">
+<meta property="og:description" content="Сжимай видео в&nbsp;браузере: 100% — без потери качества (копия потоков + оптимизация), ниже — сильнее сжатие">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:image" content="https://rafael-mansurov.github.io/browser-tools/og-home.webp">
+<meta property="og:image:type" content="image/webp">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Сжатие видео онлайн">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Сжать видео онлайн">
+<meta name="twitter:description" content="Сжимай видео в&nbsp;браузере локально, без загрузки на сервер">
+<meta name="twitter:image" content="https://rafael-mansurov.github.io/browser-tools/og-home.webp">
+<meta name="twitter:image:alt" content="Сжатие видео онлайн">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Сжатие видео онлайн",
+  "alternateName": "Уменьшение размера видео в браузере",
+  "operatingSystem": "Any",
+  "applicationCategory": "MultimediaApplication",
+  "description": "Сжимает видео в браузере через FFmpeg.wasm. На 100% — копирование потоков и оптимизация контейнера без перекодирования, если формат позволяет.",
+  "url": "https://rafael-mansurov.github.io/browser-tools/compress-video.html",
+  "author": {
+    "@type": "Person",
+    "name": "Рафаэль Мансуров"
+  }
+}
+</script>
+<style>
+  #videoTool .video-preview-single {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  #videoTool .video-preview-single .canvas-panel {
+    max-height: none;
+  }
+  #videoTool .ffmpeg-progress-block {
+    display: none;
+    margin-top: 12px;
+    margin-bottom: 4px;
+  }
+  #videoTool .ffmpeg-progress-block.is-visible { display: block; }
+  #videoTool .ffmpeg-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--text-mid);
+  }
+  #videoTool .ffmpeg-progress-pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--cyan);
+    font-weight: 500;
+  }
+  #videoTool .ffmpeg-progress-track {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  #videoTool .ffmpeg-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--blue), var(--cyan));
+    border-radius: 4px;
+    transition: width 0.25s ease;
+  }
+  #videoTool .ffmpeg-progress-track.is-indeterminate .ffmpeg-progress-fill {
+    width: 40% !important;
+    transition: none;
+    animation: video-progress-indet 1.1s ease-in-out infinite;
+  }
+  @keyframes video-progress-indet {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+  }
+  #videoTool .compress-result-summary {
+    display: none;
+    margin-top: 14px;
+    padding: 14px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.5;
+  }
+  #videoTool .compress-result-summary.is-visible { display: block; }
+  #videoTool .compress-result-summary .saved {
+    color: var(--green);
+    font-weight: 500;
+  }
+  #videoTool .workspace > .upload-notice.visible {
+    margin-bottom: 14px;
+  }
+  /* Оверлей загрузки движка — как cv-status в watermark.html */
+  #videoTool .ffmpeg-init-status {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px 40px;
+    animation: cvFadeIn 0.4s ease forwards;
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--text-dim);
+    background: transparent;
+    transition: opacity 0.3s ease;
+    z-index: 2;
+  }
+  #videoTool .ffmpeg-init-status.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #videoTool .ffmpeg-init-status.cv-status-failed {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    border-radius: 12px;
+    padding: 18px 20px;
+    max-width: 340px;
+    margin: auto;
+    color: #fecaca;
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    background: rgba(239, 68, 68, 0.09);
+    text-align: center;
+    line-height: 1.5;
+    font-size: 12px;
+    max-height: none;
+    overflow: visible;
+    inset: auto;
+    position: relative;
+    width: 100%;
+  }
+  #videoTool .ffmpeg-init-status.cv-status-failed p {
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a href="index.html" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    Все инструменты
+  </a>
+
+  <header class="header">
+    <div class="badge">В&nbsp;браузере</div>
+    <h1>Сжать <span>видео</span></h1>
+    <p class="subtitle">
+      Загрузи ролик, выбери качество и скачай готовый файл. На&nbsp;100% качество не трогаем — только оптимизируем контейнер, где возможно
+    </p>
+  </header>
+
+  <section class="section" id="video-tool">
+    <div class="section-label">Онлайн-версия</div>
+    <h2>Сжатие видео</h2>
+    <p>Движок сжатия подгружается при открытии страницы (~25&nbsp;МБ, один раз в сессию). Обработка идёт на&nbsp;твоём устройстве — видео не отправляется на&nbsp;сервер.</p>
+
+    <input type="file" id="fileInput" accept="video/*,.mp4,.webm,.mov,.mkv,.avi,.m4v,.ogv" class="is-hidden">
+
+    <div class="workspace" id="workspace">
+      <p class="upload-notice" id="uploadNotice" role="status" aria-live="polite"></p>
+      <div class="upload-zone cv-loading" id="uploadZone">
+        <div class="upload-pick">
+          <i data-lucide="clapperboard" class="upload-icon icon-upload-accent"></i>
+          <p class="upload-title">Перетащи видео сюда</p>
+          <p class="upload-or">или</p>
+          <button type="button" class="btn btn-primary" id="uploadPickBtn">Выбрать файл</button>
+          <p class="upload-hint">MP4 · WebM · MOV · MKV и&nbsp;другие. Один файл за&nbsp;раз</p>
+        </div>
+        <div class="ffmpeg-init-status" id="ffmpegInitStatus">
+          <div data-webp-loader></div>
+          <div class="cv-status-head">
+            <span class="cv-dot"></span>
+            <span id="ffmpegInitStatusText">Загрузка движка…</span>
+          </div>
+          <div class="cv-progress-track" aria-hidden="true">
+            <div class="cv-progress-fill" id="ffmpegInitProgressFill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-wrap" id="editorWrap" style="display:none">
+        <div class="editor-header">
+          <span class="file-name" id="fileName"></span>
+        </div>
+
+        <div class="editor-preview-area">
+          <div class="video-preview-single">
+            <div class="canvas-panel">
+              <div class="canvas-label">Исходник</div>
+              <video id="videoOrig" controls playsinline></video>
+              <div class="size-info" id="origSize"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-group">
+            <div class="slider-label">
+              Качество
+              <span id="qualityVal">100</span>
+            </div>
+            <input type="range" id="qualitySlider" min="1" max="100" value="100">
+            <div class="slider-help-text">100 — без перекодирования, только оптимизация (где возможно); 1 — сильнее сжатие, ниже качество</div>
+          </div>
+        </div>
+
+        <div class="compress-result-summary" id="resultSummary" aria-live="polite">
+          <span id="resultSummaryText"></span>
+        </div>
+
+        <div class="ffmpeg-progress-block" id="ffmpegProgressBlock">
+          <div class="ffmpeg-progress-meta">
+            <span id="ffmpegProgressLabel">Сжатие</span>
+            <span class="ffmpeg-progress-pct" id="ffmpegProgressPct">0%</span>
+          </div>
+          <div class="ffmpeg-progress-track" id="ffmpegProgress">
+            <div class="ffmpeg-progress-fill" id="ffmpegProgressFill"></div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn btn-ghost" id="resetBtn">Загрузить другое</button>
+          <button class="btn btn-primary" id="compressBtn" type="button">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="compress-btn-label">Сжать видео</span>
+          </button>
+          <button class="btn btn-primary is-hidden" id="downloadBtn" type="button">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Скачать
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section faq-section">
+    <div class="section-label">Вопросы</div>
+    <h2>Частые вопросы</h2>
+
+    <details>
+      <summary>Что значит 100% без перекодирования?</summary>
+      <div class="details-body">
+        <p>FFmpeg копирует видео- и аудиопотоки как есть и&nbsp;только перепаковывает файл (например, <code style="color:var(--cyan);">faststart</code> для MP4 — удобнее для веба). Картинка и звук не пересчитываются, поэтому качество не меняется. Если контейнер или кодеки не позволяют просто скопировать потоки, инструмент один раз перекодирует ролик в высоком качестве (CRF&nbsp;18).</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Видео уходит на сервер?</summary>
+      <div class="details-body">
+        <p>Нет. Всё выполняется в&nbsp;твоём браузере через WebAssembly. Интернет нужен, пока страница один раз скачивает движок с CDN (при открытии страницы).</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Открыл HTML двойным кликом — не работает</summary>
+      <div class="details-body">
+        <p>Страница должна открываться по адресу <code style="color:var(--cyan);">http://…</code> (локальный сервер или сайт), а не как <code style="color:var(--cyan);">file://…</code>. Иначе браузер режет Web Worker. Из папки проекта: <code style="color:var(--cyan);">python3 -m http.server 8080</code> → в адресной строке <code style="color:var(--cyan);">http://localhost:8080/compress-video.html</code>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Почему при открытии страницы идёт загрузка?</summary>
+      <div class="details-body">
+        <p>Сразу после открытия страницы браузер скачивает wasm-модуль FFmpeg (десятки мегабайт) — как модель на странице с&nbsp;водяными знаками. Дальше файл кэшируется. Длинные ролики в высоком разрешении обрабатываются дольше — это нормально для работы целиком на устройстве.</p>
+      </div>
+    </details>
+  </section>
+
+  <footer class="footer" id="sharedFooter"></footer>
+
+</div>
+
+<script src="config.js"></script>
+<script src="utils.js"></script>
+<script src="footer.js"></script>
+<script src="loader.js"></script>
+<script type="module">
+  const FFMPEG_PKG = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js';
+  const FFMPEG_ESM_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/';
+  const FFMPEG_UTIL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js';
+  const FFMPEG_CORE_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+
+  /** Worker с прямым URL CDN нельзя поднять со страницы file:// (origin null). Грузим worker как blob с абсолютными import — тогда Worker создаётся с blob:-URL страницы. */
+  let ffmpegWorkerBlobUrl = null;
+  async function getFfmpegWorkerBlobUrl() {
+    if (ffmpegWorkerBlobUrl) return ffmpegWorkerBlobUrl;
+    const res = await fetch(`${FFMPEG_ESM_BASE}worker.js`);
+    if (!res.ok) throw new Error('ffmpeg worker.js');
+    let code = await res.text();
+    code = code.replace(/from\s+["']\.\/const\.js["']/g, `from "${FFMPEG_ESM_BASE}const.js"`);
+    code = code.replace(/from\s+["']\.\/errors\.js["']/g, `from "${FFMPEG_ESM_BASE}errors.js"`);
+    ffmpegWorkerBlobUrl = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+    return ffmpegWorkerBlobUrl;
+  }
+
+  const uploadZone = document.getElementById('uploadZone');
+  const uploadPickBtn = document.getElementById('uploadPickBtn');
+  const fileInput = document.getElementById('fileInput');
+  const editorWrap = document.getElementById('editorWrap');
+  const videoOrig = document.getElementById('videoOrig');
+  const fileNameEl = document.getElementById('fileName');
+  const origSizeEl = document.getElementById('origSize');
+  const resultSummary = document.getElementById('resultSummary');
+  const resultSummaryText = document.getElementById('resultSummaryText');
+  const qualitySlider = document.getElementById('qualitySlider');
+  const qualityVal = document.getElementById('qualityVal');
+  const compressBtn = document.getElementById('compressBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const uploadNotice = document.getElementById('uploadNotice');
+  const compressBtnLabel = document.querySelector('#compressBtn .compress-btn-label');
+  const ffmpegProgressBlock = document.getElementById('ffmpegProgressBlock');
+  const ffmpegProgress = document.getElementById('ffmpegProgress');
+  const ffmpegProgressFill = document.getElementById('ffmpegProgressFill');
+  const ffmpegProgressLabel = document.getElementById('ffmpegProgressLabel');
+  const ffmpegProgressPct = document.getElementById('ffmpegProgressPct');
+
+  const FFMPEG_INIT_MIN_MS = 1800;
+  let ffmpegInitReady = false;
+  let ffmpegInitMarked = false;
+  let ffmpegInitMinDone = false;
+  let ffmpegWasmDownloaded = false;
+  let ffmpegInitProgressTimer = null;
+
+  let currentFile = null;
+  let origObjectUrl = null;
+  let resultBlob = null;
+  let resultDownloadName = 'video-out.mp4';
+  let ffmpegSingleton = null;
+  let ffmpegLoadPromise = null;
+  /** Слияние процента из API progress и из stderr (time=…); подменяется на каждый запуск. */
+  let progressMerge = () => {};
+  let ffmpegLogConsumer = null;
+
+  function parseFfmpegTimeSec(line) {
+    const m = String(line).match(/time=(\d{1,2}):(\d{1,2}):(\d+\.?\d*)/);
+    if (!m) return null;
+    return parseInt(m[1], 10) * 3600 + parseInt(m[2], 10) * 60 + parseFloat(m[3]);
+  }
+
+  function updateProgressUI(pct, labelText) {
+    const p = Math.min(100, Math.max(0, pct));
+    if (ffmpegProgressFill) ffmpegProgressFill.style.width = p + '%';
+    if (ffmpegProgressPct) ffmpegProgressPct.textContent = Math.round(p) + '%';
+    if (labelText != null && ffmpegProgressLabel) ffmpegProgressLabel.textContent = labelText;
+  }
+
+  function setProgressIndeterminate(on, labelText) {
+    if (ffmpegProgress) ffmpegProgress.classList.toggle('is-indeterminate', !!on);
+    if (labelText != null) updateProgressUI(0, labelText);
+  }
+
+  function setFfmpegInitProgress(percent, label) {
+    const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
+    const fill = document.getElementById('ffmpegInitProgressFill');
+    if (fill) fill.style.width = clamped + '%';
+    const text = document.getElementById('ffmpegInitStatusText');
+    if (text && label) text.textContent = label;
+  }
+
+  function mountFfmpegInitOverlay() {
+    const root = document.getElementById('ffmpegInitStatus');
+    if (!root) return;
+    root.classList.remove('is-hidden');
+    root.className = 'ffmpeg-init-status';
+    root.innerHTML = '';
+    const loaderSlot = document.createElement('div');
+    if (typeof window.buildWebpLoader === 'function') {
+      loaderSlot.appendChild(window.buildWebpLoader());
+    }
+    root.appendChild(loaderSlot);
+    const head = document.createElement('div');
+    head.className = 'cv-status-head';
+    head.innerHTML =
+      '<span class="cv-dot"></span><span id="ffmpegInitStatusText">Загрузка движка…</span>';
+    root.appendChild(head);
+    const track = document.createElement('div');
+    track.className = 'cv-progress-track';
+    track.setAttribute('aria-hidden', 'true');
+    const fill = document.createElement('div');
+    fill.className = 'cv-progress-fill';
+    fill.id = 'ffmpegInitProgressFill';
+    track.appendChild(fill);
+    root.appendChild(track);
+  }
+
+  function tryFinalizeFfmpegInit() {
+    if (!ffmpegWasmDownloaded || !ffmpegInitMinDone) return;
+    markFfmpegInitReady();
+  }
+
+  function startFfmpegInitProgressAnimation() {
+    if (ffmpegInitProgressTimer) return;
+    const started = Date.now();
+    setFfmpegInitProgress(2, 'Загрузка движка…');
+    ffmpegInitProgressTimer = setInterval(() => {
+      const elapsed = Date.now() - started;
+      const t = Math.min(1, elapsed / FFMPEG_INIT_MIN_MS);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const progress = 2 + eased * 94;
+      setFfmpegInitProgress(progress, t > 0.72 ? 'Почти готово…' : 'Загрузка движка…');
+      if (t >= 1) {
+        clearInterval(ffmpegInitProgressTimer);
+        ffmpegInitProgressTimer = null;
+        ffmpegInitMinDone = true;
+        tryFinalizeFfmpegInit();
+      }
+    }, 70);
+  }
+
+  function markFfmpegInitReady() {
+    if (ffmpegInitMarked) return;
+    ffmpegInitMarked = true;
+    if (ffmpegInitProgressTimer) {
+      clearInterval(ffmpegInitProgressTimer);
+      ffmpegInitProgressTimer = null;
+    }
+    ffmpegInitReady = true;
+    setFfmpegInitProgress(100, 'Движок готов');
+    const s = document.getElementById('ffmpegInitStatus');
+    if (s) {
+      s.classList.remove('cv-status-failed');
+      setTimeout(() => {
+        s.style.animation = 'none';
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            s.classList.add('is-hidden');
+            setTimeout(() => {
+              const uz = document.getElementById('uploadZone');
+              if (uz) uz.classList.remove('cv-loading', 'cv-failed');
+            }, 420);
+          })
+        );
+      }, 900);
+    }
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  function showFfmpegInitFailed() {
+    if (ffmpegInitProgressTimer) {
+      clearInterval(ffmpegInitProgressTimer);
+      ffmpegInitProgressTimer = null;
+    }
+    ffmpegInitMinDone = false;
+    ffmpegWasmDownloaded = false;
+    const uz = document.getElementById('uploadZone');
+    if (uz) {
+      uz.classList.remove('cv-loading');
+      uz.classList.add('cv-failed');
+    }
+    const s = document.getElementById('ffmpegInitStatus');
+    if (s) {
+      s.className = 'ffmpeg-init-status cv-status-failed';
+      s.innerHTML =
+        '<p>Не удалось загрузить движок сжатия. Проверь интернет; иногда мешают VPN или блокировка. Страницу лучше открыть по http://localhost (не file://).</p><button type="button" class="btn btn-primary" id="ffmpegRetryBtn">Повторить</button>';
+      const rb = document.getElementById('ffmpegRetryBtn');
+      if (rb) {
+        rb.addEventListener('click', () => {
+          ffmpegLoadPromise = null;
+          ffmpegSingleton = null;
+          ffmpegInitMarked = false;
+          ffmpegInitReady = false;
+          if (uz) {
+            uz.classList.remove('cv-failed');
+            uz.classList.add('cv-loading');
+          }
+          mountFfmpegInitOverlay();
+          beginFfmpegPreload();
+        });
+      }
+    }
+  }
+
+  function beginFfmpegPreload() {
+    startFfmpegInitProgressAnimation();
+    ensureFFmpeg()
+      .then(() => {
+        ffmpegWasmDownloaded = true;
+        tryFinalizeFfmpegInit();
+      })
+      .catch((err) => {
+        console.error(err);
+        showFfmpegInitFailed();
+      });
+  }
+
+  function isSupportedVideo(file) {
+    if (!file) return false;
+    const t = (file.type || '').toLowerCase();
+    if (t.startsWith('video/')) return true;
+    const n = (file.name || '').toLowerCase();
+    return /\.(mp4|webm|mov|mkv|avi|m4v|ogv|mpeg|mpg|3gp)$/i.test(n);
+  }
+
+  function getVideoExt(file) {
+    const m = (file.name || '').match(/\.([a-z0-9]+)$/i);
+    if (m) {
+      const e = m[1].toLowerCase();
+      if (['mp4', 'webm', 'mov', 'mkv', 'avi', 'm4v', 'ogv', 'mpeg', 'mpg', '3gp'].includes(e)) return e;
+    }
+    if ((file.type || '').includes('webm')) return 'webm';
+    if ((file.type || '').includes('quicktime')) return 'mov';
+    return 'mp4';
+  }
+
+  function faststartCapableExt(ext) {
+    return ext === 'mp4' || ext === 'm4v' || ext === 'mov';
+  }
+
+  function showNotice(msg, type) {
+    if (!uploadNotice) return;
+    uploadNotice.textContent = msg || '';
+    let cls = 'upload-notice';
+    if (msg) cls += ' visible';
+    if (type === 'success') cls += ' success';
+    else if (type === 'info') cls += ' info';
+    uploadNotice.className = cls;
+    if (msg) {
+      try {
+        uploadNotice.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } catch (_) { /* ignore */ }
+    }
+  }
+
+  function setCompressBusy(busy) {
+    compressBtn.disabled = !!busy;
+    compressBtn.setAttribute('aria-busy', busy ? 'true' : 'false');
+    if (compressBtnLabel) compressBtnLabel.textContent = busy ? 'Сжимаю…' : 'Сжать видео';
+  }
+
+  function withTimeout(promise, ms, message) {
+    let to;
+    const timeoutP = new Promise((_, reject) => {
+      to = setTimeout(() => reject(new Error(message)), ms);
+    });
+    return Promise.race([
+      promise.then(
+        (v) => {
+          clearTimeout(to);
+          return v;
+        },
+        (e) => {
+          clearTimeout(to);
+          throw e;
+        }
+      ),
+      timeoutP,
+    ]);
+  }
+
+  function clearResultPreview() {
+    resultBlob = null;
+    if (resultSummary) resultSummary.classList.remove('is-visible');
+    if (resultSummaryText) resultSummaryText.textContent = '';
+    downloadBtn.classList.add('is-hidden');
+    compressBtn.classList.remove('is-hidden');
+  }
+
+  function qualityToCrf(percent) {
+    return Math.round(18 + ((100 - percent) / 100) * 22);
+  }
+
+  async function cleanupFfmpegFiles(ffmpeg, names) {
+    for (const n of names) {
+      try {
+        await ffmpeg.deleteFile(n);
+      } catch (_) { /* ignore */ }
+    }
+  }
+
+  async function ensureFFmpeg() {
+    if (ffmpegSingleton) return ffmpegSingleton;
+    if (ffmpegLoadPromise) return ffmpegLoadPromise;
+
+    ffmpegLoadPromise = (async () => {
+      try {
+        const { FFmpeg } = await import(FFMPEG_PKG);
+        const { toBlobURL } = await import(FFMPEG_UTIL);
+        const ffmpeg = new FFmpeg();
+        ffmpeg.on('log', ({ message }) => {
+          if (ffmpegLogConsumer) ffmpegLogConsumer(message);
+        });
+        ffmpeg.on('progress', ({ progress }) => {
+          const p = Math.min(100, Math.max(0, Math.round((progress || 0) * 100)));
+          progressMerge(p);
+        });
+        const classWorkerURL = await getFfmpegWorkerBlobUrl();
+        await ffmpeg.load({
+          classWorkerURL,
+          coreURL: await toBlobURL(`${FFMPEG_CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${FFMPEG_CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+        ffmpegSingleton = ffmpeg;
+        return ffmpeg;
+      } catch (e) {
+        ffmpegLoadPromise = null;
+        ffmpegSingleton = null;
+        throw e;
+      }
+    })();
+
+    return ffmpegLoadPromise;
+  }
+
+  async function transcodeToMp4(ffmpeg, inName, crf) {
+    const outName = 'out.mp4';
+    try {
+      await ffmpeg.exec([
+        '-i', inName,
+        '-map', '0:v:0',
+        '-c:v', 'libx264',
+        '-crf', String(crf),
+        '-preset', 'medium',
+        '-map', '0:a:0',
+        '-c:a', 'aac',
+        '-b:a', '128k',
+        '-movflags', '+faststart',
+        '-y', outName,
+      ]);
+    } catch (_) {
+      await ffmpeg.exec([
+        '-i', inName,
+        '-map', '0:v:0',
+        '-c:v', 'libx264',
+        '-crf', String(crf),
+        '-preset', 'medium',
+        '-an',
+        '-movflags', '+faststart',
+        '-y', outName,
+      ]);
+    }
+    return { outName, ext: 'mp4' };
+  }
+
+  async function runOptimizeOrCompress(file) {
+    const percent = parseInt(qualitySlider.value, 10);
+    const ext = getVideoExt(file);
+    const inName = 'in.' + ext;
+
+    if (ffmpegProgressBlock) ffmpegProgressBlock.classList.add('is-visible');
+    setProgressIndeterminate(false);
+    updateProgressUI(0, 'Подготовка…');
+
+    try {
+      const ffmpeg = await ensureFFmpeg();
+
+      await new Promise((resolve) => {
+        if (!videoOrig || videoOrig.readyState >= HTMLMediaElement.HAVE_METADATA) resolve();
+        else {
+          videoOrig.addEventListener('loadedmetadata', () => resolve(), { once: true });
+          setTimeout(resolve, 5000);
+        }
+      });
+
+      let maxPct = 0;
+      progressMerge = (p) => {
+        maxPct = Math.max(maxPct, p);
+        updateProgressUI(maxPct, 'Сжатие…');
+      };
+
+      const dur = videoOrig && Number.isFinite(videoOrig.duration) && videoOrig.duration > 0 ? videoOrig.duration : 0;
+      ffmpegLogConsumer = (msg) => {
+        if (dur <= 0) return;
+        const t = parseFfmpegTimeSec(msg);
+        if (t == null) return;
+        progressMerge(Math.min(99, Math.round((t / dur) * 100)));
+      };
+
+      await cleanupFfmpegFiles(ffmpeg, ['in.' + ext, 'out.mp4', 'out.' + ext, 'in.mp4', 'in.webm', 'in.mov', 'in.mkv']);
+
+      const { fetchFile } = await import(FFMPEG_UTIL);
+      await ffmpeg.writeFile(inName, await fetchFile(file));
+
+      let outName;
+      let outExt;
+
+      if (percent >= 100) {
+        const outCopy = 'out.' + ext;
+        const args = ['-i', inName, '-c', 'copy', '-avoid_negative_ts', 'make_zero'];
+        if (faststartCapableExt(ext)) args.push('-movflags', '+faststart');
+        args.push('-y', outCopy);
+        try {
+          ffmpegLogConsumer = null;
+          setProgressIndeterminate(true, 'Копирование без перекодирования…');
+          await ffmpeg.exec(args);
+          setProgressIndeterminate(false);
+          updateProgressUI(100, 'Готово');
+          outName = outCopy;
+          outExt = ext;
+        } catch (err) {
+          setProgressIndeterminate(false);
+          updateProgressUI(maxPct, 'Перекодирование…');
+          ffmpegLogConsumer = (msg) => {
+            if (dur <= 0) return;
+            const t = parseFfmpegTimeSec(msg);
+            if (t == null) return;
+            progressMerge(Math.min(99, Math.round((t / dur) * 100)));
+          };
+          const r = await transcodeToMp4(ffmpeg, inName, 18);
+          outName = r.outName;
+          outExt = r.ext;
+        }
+      } else {
+        updateProgressUI(maxPct, 'Сжатие…');
+        const r = await transcodeToMp4(ffmpeg, inName, qualityToCrf(percent));
+        outName = r.outName;
+        outExt = r.ext;
+      }
+
+      updateProgressUI(100, 'Готово');
+
+      const data = await ffmpeg.readFile(outName);
+      await cleanupFfmpegFiles(ffmpeg, [inName, outName]);
+
+      const mimeByExt = {
+        webm: 'video/webm',
+        ogv: 'video/ogg',
+        mkv: 'video/x-matroska',
+        mov: 'video/quicktime',
+        avi: 'video/x-msvideo',
+        mp4: 'video/mp4',
+        m4v: 'video/x-m4v',
+      };
+      const mime = mimeByExt[outExt] || 'video/mp4';
+      const blob = new Blob([data], { type: mime });
+
+      const stem = (file.name || 'video').replace(/\.[^.]+$/, '') || 'video';
+      resultDownloadName = stem + '-compressed.' + outExt;
+
+      return blob;
+    } finally {
+      ffmpegLogConsumer = null;
+      progressMerge = () => {};
+    }
+  }
+
+  function showEditor(file) {
+    currentFile = file;
+    clearResultPreview();
+    if (origObjectUrl) URL.revokeObjectURL(origObjectUrl);
+    origObjectUrl = URL.createObjectURL(file);
+    videoOrig.src = origObjectUrl;
+    fileNameEl.textContent = file.name;
+    origSizeEl.textContent = fmtSize(file.size);
+    uploadZone.style.display = 'none';
+    editorWrap.style.display = 'block';
+    showNotice('');
+  }
+
+  function showUpload() {
+    editorWrap.style.display = 'none';
+    uploadZone.style.display = 'flex';
+    if (origObjectUrl) {
+      URL.revokeObjectURL(origObjectUrl);
+      origObjectUrl = null;
+    }
+    clearResultPreview();
+    videoOrig.removeAttribute('src');
+    videoOrig.load();
+    currentFile = null;
+    fileInput.value = '';
+  }
+
+  uploadPickBtn.addEventListener('click', () => {
+    if (!ffmpegInitReady) {
+      showNotice('Подожди, пока загрузится движок сжатия.', 'info');
+      return;
+    }
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    if (!ffmpegInitReady) {
+      showNotice('Подожди, пока загрузится движок сжатия.', 'info');
+      e.target.value = '';
+      return;
+    }
+    if (!isSupportedVideo(f)) {
+      showNotice('Нужен видеофайл (MP4, WebM, MOV, MKV…)');
+      e.target.value = '';
+      return;
+    }
+    showEditor(f);
+    e.target.value = '';
+  });
+
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (!ffmpegInitReady) {
+      showNotice('Подожди, пока загрузится движок сжатия.', 'info');
+      return;
+    }
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    if (!isSupportedVideo(f)) {
+      showNotice('Нужен видеофайл (MP4, WebM, MOV, MKV…)');
+      return;
+    }
+    showEditor(f);
+  });
+
+  qualitySlider.addEventListener('input', () => {
+    qualityVal.textContent = qualitySlider.value;
+    clearResultPreview();
+  });
+
+  compressBtn.addEventListener('click', async () => {
+    if (!currentFile || compressBtn.disabled) return;
+    setCompressBusy(true);
+    downloadBtn.disabled = true;
+    const onFile = location.protocol === 'file:';
+    if (onFile) {
+      showNotice(
+        'Страница открыта как file:// — часть браузеров всё равно блокирует Worker. Надёжнее: в папке проекта выполни в терминале python3 -m http.server 8080 и открой http://localhost:8080/compress-video.html',
+        'info'
+      );
+    } else {
+      showNotice('Сжимаю видео… На длинных роликах это может занять несколько минут.', 'info');
+    }
+    try {
+      const OP_TIMEOUT_MS = 900000;
+      resultBlob = await withTimeout(
+        runOptimizeOrCompress(currentFile),
+        OP_TIMEOUT_MS,
+        'Слишком долго ждём ответ (больше 15 мин). Проверь сеть, освободи память или попробуй короткий ролик для проверки.'
+      );
+      const o = currentFile.size;
+      if (resultSummaryText && resultSummary) {
+        if (o > 0 && resultBlob.size < o) {
+          const pct = Math.round((1 - resultBlob.size / o) * 100);
+          resultSummaryText.innerHTML =
+            'Готово: <strong>' +
+            fmtSize(resultBlob.size) +
+            '</strong> <span class="saved">↓' +
+            pct +
+            '%</span> к исходнику';
+        } else {
+          resultSummaryText.innerHTML = 'Готово: <strong>' + fmtSize(resultBlob.size) + '</strong>';
+        }
+        resultSummary.classList.add('is-visible');
+      }
+      compressBtn.classList.add('is-hidden');
+      downloadBtn.classList.remove('is-hidden');
+      showNotice('Можно скачать файл', 'success');
+    } catch (err) {
+      console.error(err);
+      const msg = err && typeof err.message === 'string' ? err.message : '';
+      const isWorkerSecurity =
+        err &&
+        (err.name === 'SecurityError' ||
+          (msg && (msg.includes('Worker') || msg.includes('cross-origin'))));
+      if (isWorkerSecurity) {
+        showNotice(
+          'Браузер блокирует Worker (часто при file://). Запусти локальный сервер: python3 -m http.server 8080 → http://localhost:8080/compress-video.html'
+        );
+      } else if (msg && msg.includes('Слишком долго')) {
+        showNotice(msg);
+      } else {
+        showNotice(
+          'Не удалось обработать видео: ' +
+            (msg || 'неизвестная ошибка') +
+            '. Попробуй Chrome или Edge, открой страницу по http://localhost, уменьши разрешение ролика.'
+        );
+      }
+    } finally {
+      setCompressBusy(false);
+      downloadBtn.disabled = false;
+      if (ffmpegProgressBlock) ffmpegProgressBlock.classList.remove('is-visible');
+      if (ffmpegProgress) ffmpegProgress.classList.remove('is-indeterminate');
+      if (ffmpegProgressFill) ffmpegProgressFill.style.width = '0%';
+      if (ffmpegProgressPct) ffmpegProgressPct.textContent = '0%';
+      if (ffmpegProgressLabel) ffmpegProgressLabel.textContent = 'Сжатие';
+    }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!resultBlob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(resultBlob);
+    a.download = resultDownloadName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (!confirm('Текущее видео исчезнет из редактора. Загрузить другое?')) return;
+    showUpload();
+    showNotice('');
+  });
+
+  window.addEventListener('beforeunload', () => {
+    if (origObjectUrl) URL.revokeObjectURL(origObjectUrl);
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', beginFfmpegPreload);
+  } else {
+    beginFfmpegPreload();
+  }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.462.0/dist/umd/lucide.min.js" integrity="sha384-8nT3SpButyvenpAdKYPJzXdSz3zidMGduMoaMvwjKnAWVv238n6P1mhveiJJQWrV" crossorigin="anonymous" defer onload="window.lucide&&window.lucide.createIcons()"></script>
+</body>
+</html>

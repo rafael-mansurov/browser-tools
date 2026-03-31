@@ -184,35 +184,10 @@
                 </div>
                 <span class="code-filename">Convert to WebP.workflow</span>
               </div>
-              <div class="code-toolbar-right">
-                <button class="btn btn-ghost" onclick="window.open(APP_CONFIG.WEBP_MAC_URL,'_blank')">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                  Копировать
-                </button>
-                <a class="btn btn-primary" id="webpMacDownloadBtn" href="#" target="_blank" rel="noopener noreferrer">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Скачать .workflow
-                </a>
-              </div>
+              <div class="code-toolbar-right" data-paywall-toolbar data-paywall-config="WEBP_MAC_URL" data-paywall-primary="link" data-paywall-primary-label="Скачать .workflow" data-paywall-primary-id="webpMacDownloadBtn"></div>
             </div>
-            <pre id="workflowCodePreview" style="pointer-events:none;user-select:none;-webkit-user-select:none;overflow:hidden;"># ==== Convert to WebP: пресеты с&nbsp;оценкой, предпросмотр ====
-CWEBP="/opt/homebrew/bin/cwebp"
-targets=()
-for p in "$@"; do
-  if [[ -d "$p" ]]; then
-    find "$p" -type f \( -iname '*.png' -o -iname '*.jpg' \) -print0 | ...
-  else
-    [[ "$ext" == "png" || "$ext" == "jpg" ]] && targets+=("$p")
-  fi
-done
-presets=(10 20 30 40 50 60 70 80 90 100)
-# … диалог выбора качества, предпросмотр, конвертация …
-# Полный workflow — после оплаты.</pre>
-            <!-- PAYWALL OVERLAY -->
-            <div style="position:absolute;inset:-1px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);background:rgba(0,0,0,0.45);border-radius:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:10;">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <a id="webpMacPaywallCta" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="font-size:14px;padding:10px 22px;">Купить за&nbsp;100 ₽</a>
-            </div>
+            <pre class="preview-readonly paywall-decoy-pre" data-paywall-decoy-pre data-paywall-decoy-config="WEBP_MAC_URL"></pre>
+            <div data-paywall data-paywall-config="WEBP_MAC_URL" data-paywall-cta-id="webpMacPaywallCta"></div>
           </div>
         </div>
 
@@ -247,34 +222,10 @@ presets=(10 20 30 40 50 60 70 80 90 100)
                 </div>
                 <span class="code-filename">windows/install.ps1</span>
               </div>
-              <div class="code-toolbar-right">
-                <button class="btn btn-ghost" onclick="window.open(APP_CONFIG.WEBP_WINDOWS_URL,'_blank')">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                  Копировать
-                </button>
-                <button class="btn btn-primary" onclick="window.open(APP_CONFIG.WEBP_WINDOWS_URL,'_blank')">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Скачать
-                </button>
-              </div>
+              <div class="code-toolbar-right" data-paywall-toolbar data-paywall-config="WEBP_WINDOWS_URL" data-paywall-primary="open" data-paywall-primary-label="Скачать"></div>
             </div>
-            <pre style="pointer-events:none;user-select:none;-webkit-user-select:none;overflow:hidden;">$base='https://raw.githubusercontent.com/rafael-mansurov/browser-tools/main/windows'
-$ErrorActionPreference = 'Stop'
-$installDir = Join-Path $env:LOCALAPPDATA 'WebP-ContextMenu'
-New-Item -Path $installDir -ItemType Directory -Force | Out-Null
-$root = $base.TrimEnd('/')
-$converter = Join-Path $installDir 'ConvertToWebP.ps1'
-$uninstall = Join-Path $installDir 'uninstall.ps1'
-if (-not (Test-Path $installDir)) { throw "Не удалось создать $installDir" }
-irm "$root/install.ps1" | iex
-
-# Установит:
-# - пункт "Convert to WebP" в&nbsp;контекстное меню
-# - скрипт с&nbsp;выбором качества (1-100)</pre>
-            <div style="position:absolute;inset:-1px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);background:rgba(0,0,0,0.45);border-radius:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:10;">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <a id="webpWinPaywallCta" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="font-size:14px;padding:10px 22px;">Купить за&nbsp;100 ₽</a>
-            </div>
+            <pre class="preview-readonly paywall-decoy-pre" data-paywall-decoy-pre data-paywall-decoy-config="WEBP_WINDOWS_URL"></pre>
+            <div data-paywall data-paywall-config="WEBP_WINDOWS_URL" data-paywall-cta-id="webpWinPaywallCta"></div>
           </div>
         </div>
 
@@ -349,6 +300,7 @@ irm "$root/install.ps1" | iex
 </div>
 
 <script src="config.js"></script>
+<script src="paywall-component.js"></script>
 <script src="utils.js"></script>
 <script src="loader.js"></script>
 <script src="footer.js"></script>
@@ -730,14 +682,6 @@ irm "$root/install.ps1" | iex
     showUpload();
     clearNotice();
   });
-
-  // Устанавливаем href для платёжных ссылок из config.js
-  const _macDownload = document.getElementById('webpMacDownloadBtn');
-  const _macCta = document.getElementById('webpMacPaywallCta');
-  const _winCta = document.getElementById('webpWinPaywallCta');
-  if (_macDownload) _macDownload.href = APP_CONFIG.WEBP_MAC_URL;
-  if (_macCta) _macCta.href = APP_CONFIG.WEBP_MAC_URL;
-  if (_winCta) _winCta.href = APP_CONFIG.WEBP_WINDOWS_URL;
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.462.0/dist/umd/lucide.min.js" integrity="sha384-8nT3SpButyvenpAdKYPJzXdSz3zidMGduMoaMvwjKnAWVv238n6P1mhveiJJQWrV" crossorigin="anonymous" defer onload="window.lucide&&window.lucide.createIcons()"></script>

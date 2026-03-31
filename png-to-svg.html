@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Изображение в&nbsp;SVG онлайн — JPG, PNG, WebP</title>
+<meta name="description" content="Конвертируй JPG, PNG или WebP в&nbsp;векторный SVG прямо в&nbsp;браузере. Трассировка растра онлайн без&nbsp;регистрации">
+<meta name="keywords" content="изображение в svg, jpg в svg, png в svg, webp в svg, векторизация, трассировка bitmap, онлайн конвертер">
+<meta name="author" content="Rafael Mansurov">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://rafael-mansurov.github.io/browser-tools/png-to-svg.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://rafael-mansurov.github.io/browser-tools/png-to-svg.html">
+<meta property="og:title" content="Изображение в&nbsp;SVG онлайн — JPG, PNG, WebP">
+<meta property="og:description" content="Конвертируй JPG, PNG или WebP в&nbsp;векторный SVG прямо в&nbsp;браузере. Без регистрации, файлы остаются у&nbsp;тебя">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:image" content="https://rafael-mansurov.github.io/browser-tools/og-home.webp">
+<meta property="og:image:type" content="image/webp">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Изображение в SVG онлайн">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Изображение в&nbsp;SVG онлайн — JPG, PNG, WebP">
+<meta name="twitter:description" content="Конвертируй JPG, PNG или WebP в&nbsp;векторный SVG прямо в&nbsp;браузере. Без регистрации">
+<meta name="twitter:image" content="https://rafael-mansurov.github.io/browser-tools/og-home.webp">
+<meta name="twitter:image:alt" content="Изображение в SVG онлайн">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="context-menu-demo.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Конвертер изображений в\u00a0SVG",
+  "alternateName": "Image to SVG converter online",
+  "operatingSystem": "Any",
+  "applicationCategory": "MultimediaApplication",
+  "description": "Конвертирует JPG, PNG и WebP в\u00a0векторный SVG прямо в\u00a0браузере. Трассировка растра локально, файлы никуда не отправляются.",
+  "url": "https://rafael-mansurov.github.io/browser-tools/png-to-svg.html",
+  "author": {
+    "@type": "Person",
+    "name": "Рафаэль Мансуров"
+  }
+}
+</script>
+<style>
+.preview-img {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  background: repeating-conic-gradient(#1a1f28 0% 25%, #222834 0% 50%) 0 0 / 16px 16px;
+}
+
+.trace-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.svg-panel-wrap {
+  position: relative;
+}
+
+/* Скелетон поверх превью при перетрассировке (как watermark / compress-webp).
+   Оверлеи в DOM после .trace-zoom-sizer + высокий z-index: иначе transform на превью
+   даёт отдельный композитный слой и рисуется поверх скелетона — виден лишь «кусок» серого. */
+.trace-viewport .trace-retrace-skeleton {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.trace-viewport.retracing .trace-retrace-skeleton {
+  display: block;
+}
+
+.trace-viewport .trace-overlay-refresh {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  border-radius: 6px;
+  pointer-events: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(12, 14, 18, 0.55);
+  backdrop-filter: blur(2px);
+}
+.trace-viewport.overlay-refreshing .trace-overlay-refresh {
+  display: flex;
+}
+
+/* Во время перетрассировки только скелетон, без панели «Обновление контура…» */
+.trace-viewport.retracing .trace-overlay-refresh {
+  display: none !important;
+}
+.trace-overlay-refresh-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  background: rgba(26, 31, 40, 0.92);
+  border: 1px solid var(--border2);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+}
+.trace-overlay-refresh-spinner {
+  width: 22px;
+  height: 22px;
+  border-width: 2px;
+  flex-shrink: 0;
+}
+.trace-overlay-refresh-label {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-mid);
+  line-height: 1.35;
+  white-space: normal;
+  max-width: 220px;
+}
+@media (min-width: 480px) {
+  .trace-overlay-refresh-label {
+    white-space: nowrap;
+    max-width: none;
+  }
+}
+
+.editor-preview-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 540px) {
+  .editor-preview-split { grid-template-columns: 1fr; }
+}
+
+#editorWrap { display: none; }
+
+.trace-setting-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-mid);
+  cursor: pointer;
+  user-select: none;
+}
+.trace-setting-check input {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--blue);
+  cursor: pointer;
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.trace-check-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-mid);
+  user-select: none;
+}
+.trace-check-line:last-child { margin-bottom: 0; }
+.trace-check-line .trace-cb {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  flex-shrink: 0;
+  margin: 2px 0 0 0;
+  cursor: pointer;
+  accent-color: var(--blue);
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  pointer-events: auto;
+}
+.trace-check-line .trace-cb-label {
+  cursor: pointer;
+  flex: 1;
+  line-height: 1.45;
+  padding-top: 1px;
+}
+
+.trace-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 300px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 820px) {
+  .trace-layout { grid-template-columns: 1fr; }
+}
+
+.trace-preview-col {
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  z-index: 0;
+}
+
+.trace-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+  z-index: 2;
+  isolation: isolate;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 16px;
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.trace-section-title {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.trace-section .slider-row { margin-bottom: 10px; }
+.trace-section .slider-group { margin-bottom: 0; }
+.trace-section .trace-setting-check { margin-bottom: 10px; }
+
+.trace-preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  margin-bottom: 12px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text-mid);
+}
+
+.trace-preview-toolbar--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.trace-preview-toolbar select {
+  font-family: var(--sans);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: var(--bg-elevated, #151922);
+  color: var(--text);
+  max-width: 100%;
+}
+
+#svg-tool .trace-preview-toolbar .merge-quality-toggle {
+  margin-bottom: 0;
+}
+
+#svg-tool .trace-section-toggle {
+  margin-bottom: 10px;
+}
+
+.trace-preview-shell {
+  position: relative;
+  width: 100%;
+}
+
+/* Панель масштаба поверх превью (как .canvas-toolbar в watermark.html) */
+.trace-viewport .trace-preview-zoom-toolbar {
+  z-index: 25;
+}
+.trace-viewport .trace-preview-zoom-toolbar .canvas-label {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+.trace-viewport .trace-zoom-readout {
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+.trace-zoom-readout {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-mid);
+  min-width: 3.5em;
+  text-align: center;
+}
+
+.trace-zoom-fit-btn {
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+  margin-left: 2px;
+}
+
+.trace-viewport {
+  position: relative;
+  width: 100%;
+  min-height: 240px;
+  /* Потолок: min(высота плашки слева, 72vh, 860px) — лимит плашки задаётся --trace-vp-max-h на #traceLayout */
+  max-height: min(var(--trace-vp-max-h, 2000px), min(72vh, 860px));
+  display: flex;
+  align-items: center;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  border-radius: 6px;
+  background: repeating-conic-gradient(#1a1f28 0% 25%, #222834 0% 50%) 0 0 / 16px 16px;
+  padding: 8px;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+
+.trace-viewport.trace-viewport--pannable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.trace-viewport.trace-viewport--dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.trace-viewport.trace-viewport--dragging .trace-base-img {
+  pointer-events: none;
+}
+
+.trace-zoom-sizer {
+  display: block;
+  width: 0;
+  height: 0;
+  flex-shrink: 0;
+  margin: auto;
+  position: relative;
+  z-index: 0;
+}
+
+.trace-zoom-inner {
+  transform-origin: 0 0;
+  will-change: transform;
+  display: inline-block;
+  line-height: 0;
+}
+
+.trace-stage-inner {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.trace-preview-shell .trace-base-img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  position: relative;
+  z-index: 0;
+  transition: opacity 0.2s;
+}
+.trace-preview-shell.fade-base .trace-base-img { opacity: 0.35; }
+
+.trace-overlay-host {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
+}
+.trace-overlay-host svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.threshold-gradient {
+  height: 10px;
+  border-radius: 4px;
+  margin: 6px 0 4px;
+  background: linear-gradient(90deg, #000 0%, #fff 100%);
+  position: relative;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.threshold-gradient::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid var(--blue);
+  transform: translateX(-50%);
+  left: var(--thumb-pct, 50%);
+}
+
+/* Имя файла — справа (в общих стилях .file-name с flex:1 тянется слева из‑за max-width) */
+#svg-tool .editor-header {
+  justify-content: flex-end;
+}
+#svg-tool .file-name {
+  flex: 0 1 auto;
+  text-align: right;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a href="index.html" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    Все инструменты
+  </a>
+
+  <header class="header">
+    <div class="badge">В&nbsp;браузере</div>
+    <h1>Изображение&nbsp;→&nbsp;<span>SVG</span></h1>
+    <p class="subtitle">
+      Загрузи изображение — трассировщик превратит пиксели в&nbsp;векторные пути. Работает офлайн, файлы никуда не&nbsp;отправляются
+    </p>
+  </header>
+
+  <section class="section" id="svg-tool">
+    <div class="section-label">Онлайн-версия</div>
+    <h2>Конвертер в&nbsp;SVG</h2>
+    <p>Обработка локально — файлы не&nbsp;покидают твой компьютер.</p>
+
+    <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="is-hidden">
+
+    <div class="workspace" id="workspace">
+
+      <!-- Upload zone -->
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-pick">
+          <i data-lucide="upload" class="upload-icon icon-upload-accent"></i>
+          <p class="upload-title">Перетащи изображение или вставь из&nbsp;буфера</p>
+          <p class="upload-or">или</p>
+          <button type="button" class="btn btn-primary" id="uploadPickBtn">Выбрать файл</button>
+          <p class="upload-hint">JPG · PNG · WebP</p>
+        </div>
+        <p class="upload-notice" id="uploadNotice"></p>
+      </div>
+
+      <!-- Editor -->
+      <div class="editor-wrap" id="editorWrap">
+
+        <div class="editor-header">
+          <span class="file-name" id="fileName"></span>
+        </div>
+
+        <img id="origImg" class="is-hidden" alt="" crossorigin="anonymous">
+
+        <div class="trace-layout" id="traceLayout">
+          <aside class="trace-sidebar" id="traceSidebar">
+            <div class="trace-section">
+              <div class="trace-section-title">Превью</div>
+              <div class="trace-preview-toolbar trace-preview-toolbar--stack">
+                <label class="trace-setting-check" style="margin:0;">
+                  <span style="min-width:7em;">Подложка</span>
+                  <select id="previewSource" style="flex:1;">
+                    <option value="original">Оригинал</option>
+                    <option value="processed">После обработки</option>
+                    <option value="vector">Вектор (итог)</option>
+                  </select>
+                </label>
+                <label class="apply-all-label merge-quality-toggle trace-preview-toggle">
+                  <span class="switch">
+                    <input type="checkbox" id="showPathChk" checked>
+                    <span class="slider"></span>
+                  </span>
+                  <span>Показать контур</span>
+                </label>
+                <label class="apply-all-label merge-quality-toggle trace-preview-toggle">
+                  <span class="switch">
+                    <input type="checkbox" id="showPointsChk">
+                    <span class="slider"></span>
+                  </span>
+                  <span>Показать узлы</span>
+                </label>
+                <label class="apply-all-label merge-quality-toggle trace-preview-toggle">
+                  <span class="switch">
+                    <input type="checkbox" id="fadeBaseChk">
+                    <span class="slider"></span>
+                  </span>
+                  <span>Приглушить подложку</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="trace-section" id="sectionPreprocess">
+              <div class="trace-section-title">Предобработка</div>
+              <label class="apply-all-label merge-quality-toggle trace-section-toggle">
+                <span class="switch">
+                  <input type="checkbox" id="invertChk">
+                  <span class="slider"></span>
+                </span>
+                <span>Инвертировать</span>
+              </label>
+              <div class="slider-row">
+                <div class="slider-group">
+                  <div class="slider-label">Размытие <span id="blurVal">1</span></div>
+                  <input type="range" id="blurSlider" min="0" max="15" value="1" step="1">
+                  <div class="slider-help-text">Убирает «лесенку» антиалиасинга у&nbsp;текста и&nbsp;иконок; при «рваном» контуре подними на&nbsp;1–3</div>
+                </div>
+              </div>
+              <div class="slider-row">
+                <div class="slider-group">
+                  <div class="slider-label">Порог <span id="thresholdVal">128</span></div>
+                  <div class="threshold-gradient" id="thresholdGradient" aria-hidden="true"></div>
+                  <input type="range" id="thresholdSlider" min="0" max="255" value="128" step="1">
+                  <div class="slider-help-text">По шкале яркости 0–255: что считать «чернилом», а что фоном</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="trace-section">
+              <div class="trace-section-title">Трассировка</div>
+              <div class="slider-row">
+                <div class="slider-group">
+                  <div class="slider-label">Игнорировать меньше <span id="pathomitVal">12</span> px</div>
+                  <input type="range" id="pathomitSlider" min="0" max="32" value="12" step="1">
+                  <div class="slider-help-text">Отсекает мелкие артефакты (аналог Ignore less than)</div>
+                </div>
+              </div>
+              <div class="slider-row">
+                <div class="slider-group">
+                  <div class="slider-label">Сглаживание углов <span id="smoothnessVal">4</span></div>
+                  <input type="range" id="smoothnessSlider" min="0" max="5" value="4" step="1">
+                </div>
+              </div>
+              <div class="slider-row">
+                <div class="slider-group">
+                  <div class="slider-label">Оптимизация кривых <span id="curveOptVal">55</span></div>
+                  <input type="range" id="curveOptSlider" min="0" max="99" value="55" step="1">
+                  <div class="slider-help-text">Больше — меньше точек, проще кривые</div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div class="trace-preview-col">
+            <div class="svg-panel-wrap trace-preview-shell" id="svgPanelWrap">
+              <div class="trace-viewport" id="traceViewport">
+                <div class="canvas-toolbar trace-preview-zoom-toolbar">
+                  <span class="canvas-label">Масштаб превью</span>
+                  <div class="region-icon-group">
+                    <button type="button" class="region-icon-btn" id="traceZoomOut" title="Уменьшить" aria-label="Уменьшить масштаб">−</button>
+                    <span class="trace-zoom-readout" id="traceZoomReadout">100%</span>
+                    <button type="button" class="region-icon-btn" id="traceZoomIn" title="Увеличить" aria-label="Увеличить масштаб">+</button>
+                    <button type="button" class="btn btn-ghost trace-zoom-fit-btn" id="traceZoomFit" title="Вписать в окно">По окну</button>
+                  </div>
+                </div>
+                <div class="trace-zoom-sizer" id="traceZoomSizer">
+                  <div class="trace-zoom-inner" id="traceZoomInner">
+                    <div class="trace-stage-inner" id="traceStageInner">
+                      <img id="previewBase" class="trace-base-img" alt="Превью">
+                      <div class="trace-overlay-host" id="pathOverlayHost"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="trace-retrace-skeleton preview-skeleton-overlay skel-surface" aria-hidden="true"></div>
+                <div class="trace-overlay-refresh" aria-hidden="true">
+                  <div class="trace-overlay-refresh-inner">
+                    <div class="trace-spinner trace-overlay-refresh-spinner" role="presentation"></div>
+                    <span class="trace-overlay-refresh-label">Обновление контура…</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <div class="action-row" style="margin-top:16px;">
+          <button class="btn btn-ghost" id="resetBtn">Загрузить другое</button>
+          <button class="btn btn-primary" id="downloadBtn" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Скачать SVG
+          </button>
+        </div>
+        <p class="action-hint">При скачивании заливки и&nbsp;обводки приводятся к&nbsp;#000 или #fff по&nbsp;яркости — удобно для единого контура.</p>
+
+      </div><!-- /editor-wrap -->
+    </div><!-- /workspace -->
+
+  </section>
+
+  <section class="section">
+    <div class="section-label">Альтернатива</div>
+    <h2>Изображение → SVG из контекстного меню</h2>
+    <p class="mb-20" style="margin-bottom:20px;">macOS Quick Action или пункт в&nbsp;меню Windows: правый клик по&nbsp;картинке (JPG, PNG, WebP) — готовый SVG рядом с&nbsp;файлом, без&nbsp;браузера. Ниже — как встроить (workflow / установщик за&nbsp;платёжной ссылкой, как у&nbsp;других инструментов на&nbsp;сайте).</p>
+
+    <div class="ctxd-card" style="background:#0f1318; border:1px solid #1e2530; border-radius:14px; padding:32px 24px; display:flex; justify-content:center; align-items:flex-start; margin-bottom:28px;">
+      <div data-context-menu-demo
+           data-action-label="Image to SVG"
+           data-done-sub="SVG сохранён рядом с оригиналом"></div>
+    </div>
+
+    <details>
+      <summary>
+        <svg class="details-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+        Как встроить на Mac
+      </summary>
+      <div class="details-body">
+        <div class="details-section">
+          <h3>1. Установи potrace</h3>
+          <p>Векторизация через potrace (как в&nbsp;многих десктопных цепочках). В&nbsp;Терминале:</p>
+          <div class="cmd">
+            <span class="cmd-prompt">$</span>
+            <span class="cmd-text">brew install potrace</span>
+            <button type="button" class="cmd-copy" onclick="copyCmd(this, 'brew install potrace')">Копировать</button>
+          </div>
+        </div>
+
+        <div class="details-section">
+          <h3>2. Скачай .workflow</h3>
+          <p>Файл появится в&nbsp;«Загрузки». Дважды кликни и&nbsp;нажми «Установить» — пункт появится в&nbsp;«Быстрых действиях» Finder.</p>
+
+          <div class="code-block relative" style="position:relative;">
+            <div class="code-toolbar">
+              <div class="code-toolbar-left">
+                <div class="dots">
+                  <div class="dot dot-r"></div>
+                  <div class="dot dot-y"></div>
+                  <div class="dot dot-g"></div>
+                </div>
+                <span class="code-filename">Image to SVG.workflow</span>
+              </div>
+              <div class="code-toolbar-right" data-paywall-toolbar data-paywall-config="PNG_TO_SVG_MAC_URL" data-paywall-primary="disabled" data-paywall-primary-label="Скачать .workflow"></div>
+            </div>
+            <pre class="preview-readonly paywall-decoy-pre" data-paywall-decoy-pre data-paywall-decoy-config="PNG_TO_SVG_MAC_URL"></pre>
+
+            <div data-paywall data-paywall-config="PNG_TO_SVG_MAC_URL" data-paywall-cta-id="pngToSvgMacPaywallCta"></div>
+          </div>
+        </div>
+
+        <div class="details-section">
+          <h3>3. Как пользоваться</h3>
+          <p>В&nbsp;Finder выдели изображения → правый клик → «Быстрые действия» → <strong>Image to SVG</strong>. Готовые файлы окажутся рядом с&nbsp;оригиналами (или в&nbsp;указанной в&nbsp;workflow папке).</p>
+        </div>
+      </div>
+    </details>
+
+    <details style="margin-top:12px;">
+      <summary><svg class="details-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>Как встроить в контекстное меню Windows</summary>
+      <div class="details-body">
+
+        <div class="details-section">
+          <h3>1. Установи одной командой</h3>
+          <p>Открой PowerShell <strong>от имени администратора</strong> и выполни:</p>
+          <div class="code-block" style="position:relative;">
+            <div class="code-toolbar">
+              <div class="code-toolbar-left">
+                <div class="dots">
+                  <div class="dot dot-r"></div>
+                  <div class="dot dot-y"></div>
+                  <div class="dot dot-g"></div>
+                </div>
+                <span class="code-filename">windows/install-png-to-svg.ps1</span>
+              </div>
+              <div class="code-toolbar-right" data-paywall-toolbar data-paywall-config="PNG_TO_SVG_WINDOWS_URL" data-paywall-primary="open" data-paywall-primary-label="Скачать"></div>
+            </div>
+            <pre class="preview-readonly paywall-decoy-pre" data-paywall-decoy-pre data-paywall-decoy-config="PNG_TO_SVG_WINDOWS_URL"></pre>
+
+            <div data-paywall data-paywall-config="PNG_TO_SVG_WINDOWS_URL" data-paywall-cta-id="pngToSvgWinPaywallCta"></div>
+          </div>
+        </div>
+
+        <div class="details-section">
+          <h3>2. Как пользоваться</h3>
+          <p>Выдели файл(ы) в&nbsp;Проводнике → правый клик → <strong>Image to SVG</strong>. Скрипт создаст <code style="color:var(--cyan);">.svg</code> рядом с&nbsp;исходниками.</p>
+        </div>
+
+        <div class="details-section">
+          <h3>3. Как удалить</h3>
+          <p>Выполни в&nbsp;PowerShell:</p>
+          <div class="cmd">
+            <span class="cmd-prompt">$</span>
+            <span class="cmd-text">powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\PngToSvg-ContextMenu\uninstall-png-to-svg.ps1"</span>
+            <button type="button" class="cmd-copy" onclick="copyCmd(this, 'powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$env:LOCALAPPDATA\\PngToSvg-ContextMenu\\uninstall-png-to-svg.ps1&quot;')">Копировать</button>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="section faq-section">
+    <div class="section-label">Вопросы</div>
+    <h2>Частые вопросы</h2>
+
+    <details>
+      <summary>Куда попадает картинка? Это безопасно?</summary>
+      <div class="details-body">
+        <p>Никуда, кроме твоего браузера. Трассировка идёт на&nbsp;твоём устройстве; изображение и&nbsp;SVG не&nbsp;отправляются на&nbsp;сервер. С&nbsp;интернета подгружаются только файлы страницы и&nbsp;скрипты с&nbsp;CDN.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Почему скачанный SVG всё равно нормализуется в&nbsp;ч/б?</summary>
+      <div class="details-body">
+        <p>При «Скачать SVG» заливки и&nbsp;обводки сводятся к&nbsp;#000000 или #ffffff по&nbsp;яркости — так проще вставлять результат в&nbsp;макеты и&nbsp;редакторы как единый контур без лишних оттенков. Превью и&nbsp;трассировка идут из&nbsp;двухтонового растра после порога.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Что значат «Оригинал», «После обработки» и&nbsp;«Вектор» в&nbsp;превью?</summary>
+      <div class="details-body">
+        <p><strong>Оригинал</strong> — загруженный файл как есть. <strong>После обработки</strong> — после размытия и&nbsp;порога ч/б, именно это «видит» трассер. <strong>Вектор (итог)</strong> — результат трассировки как SVG-картинка. Красный контур можно накладывать на&nbsp;любую из&nbsp;подложек.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Контур получается «лесенкой» или с&nbsp;шумом — что крутить?</summary>
+      <div class="details-body">
+        <p>Подними <strong>размытие</strong> на&nbsp;1–3, чтобы сгладить антиалиасинг. Подстрой <strong>порог</strong>. Увеличь <strong>игнорировать меньше</strong> и&nbsp;<strong>оптимизацию кривых</strong>, чтобы убрать мелочь и&nbsp;упростить пути. Масштаб превью меняй плюсом/минусом — на&nbsp;сильном зуме любая трассировка выглядит жёстче.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>На чём это работает?</summary>
+      <div class="details-body">
+        <p>Всё считается у&nbsp;тебя в&nbsp;браузере: растр сначала можно сгладить и&nbsp;порогом свести к&nbsp;ч/б, затем из&nbsp;пикселей строятся SVG-пути. Ползунки вроде порога, «игнорировать мелочь» и&nbsp;сглаживания кривых — обычная логика трассировки; конкретные формулы и&nbsp;числа зависят от&nbsp;реализации в&nbsp;этой версии инструмента.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Зачем устанавливать workflow, если есть браузерная версия?</summary>
+      <div class="details-body">
+        <p>Quick Action на&nbsp;Mac и пункт в&nbsp;меню Windows дают SVG рядом с&nbsp;файлом без&nbsp;сайта — удобно для&nbsp;одной-двух картинок подряд. Браузерная версия лучше, когда нужны порог, размытие, предпросмотр контура и&nbsp;настройка трассировки перед скачиванием.</p>
+      </div>
+    </details>
+  </section>
+
+  <footer class="footer" id="sharedFooter"></footer>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.js"></script>
+<script src="config.js"></script>
+<script src="paywall-component.js"></script>
+<script src="utils.js"></script>
+<script src="loader.js"></script>
+<script src="footer.js"></script>
+<script src="instructions.js"></script>
+<script src="context-menu-demo-data.js"></script>
+<script src="context-menu-demo.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const fileInput     = document.getElementById('fileInput');
+  const uploadPickBtn = document.getElementById('uploadPickBtn');
+  const uploadZone    = document.getElementById('uploadZone');
+  const uploadNotice  = document.getElementById('uploadNotice');
+  const editorWrap    = document.getElementById('editorWrap');
+  const origImg       = document.getElementById('origImg');
+  const previewBase   = document.getElementById('previewBase');
+  const svgPanelWrap  = document.getElementById('svgPanelWrap');
+  const pathOverlayHost = document.getElementById('pathOverlayHost');
+  const fileNameEl    = document.getElementById('fileName');
+  const blurSlider     = document.getElementById('blurSlider');
+  const blurVal        = document.getElementById('blurVal');
+  const thresholdSlider = document.getElementById('thresholdSlider');
+  const thresholdVal   = document.getElementById('thresholdVal');
+  const thresholdGradient = document.getElementById('thresholdGradient');
+  const pathomitSlider = document.getElementById('pathomitSlider');
+  const pathomitVal    = document.getElementById('pathomitVal');
+  const smoothnessSlider = document.getElementById('smoothnessSlider');
+  const smoothnessVal  = document.getElementById('smoothnessVal');
+  const curveOptSlider = document.getElementById('curveOptSlider');
+  const curveOptVal    = document.getElementById('curveOptVal');
+  const invertChk      = document.getElementById('invertChk');
+  const previewSource  = document.getElementById('previewSource');
+  const showPathChk    = document.getElementById('showPathChk');
+  const showPointsChk  = document.getElementById('showPointsChk');
+  const fadeBaseChk    = document.getElementById('fadeBaseChk');
+  const downloadBtn    = document.getElementById('downloadBtn');
+  const resetBtn       = document.getElementById('resetBtn');
+  const traceViewport  = document.getElementById('traceViewport');
+  const traceLayout    = document.getElementById('traceLayout');
+  const traceSidebar   = document.getElementById('traceSidebar');
+  const traceZoomSizer = document.getElementById('traceZoomSizer');
+  const traceZoomInner = document.getElementById('traceZoomInner');
+  const traceZoomReadout = document.getElementById('traceZoomReadout');
+  const traceZoomIn    = document.getElementById('traceZoomIn');
+  const traceZoomOut   = document.getElementById('traceZoomOut');
+  const traceZoomFit   = document.getElementById('traceZoomFit');
+
+  let currentFile    = null;
+  let currentSvgStr  = '';
+  let currentImgData = null;
+  let svgBlobUrl     = null;
+  let tracing        = false;
+  let retaceTimer    = null;
+  let traceGen       = 0;
+  let processedPreviewUrl = null;
+  let runAgainAfterTrace = false;
+
+  let baseNatW = 0;
+  let baseNatH = 0;
+  let previewZoom = 1;
+  let lastPreviewNaturalKey = '';
+  const PREVIEW_ZOOM_STEP = 1.2;
+
+  function syncPreviewPixelSize() {
+    const w = previewBase.naturalWidth;
+    const h = previewBase.naturalHeight;
+    if (!w || !h) return;
+    baseNatW = w;
+    baseNatH = h;
+    previewBase.style.width = w + 'px';
+    previewBase.style.height = h + 'px';
+  }
+
+  /** Максимальная высота окна превью = высота левой плашки (не растягиваем плашку под превью). */
+  function syncTraceViewportCapFromSidebar() {
+    if (!traceLayout || !traceSidebar || !editorWrap) return;
+    if (getComputedStyle(editorWrap).display === 'none') {
+      traceLayout.style.removeProperty('--trace-vp-max-h');
+      return;
+    }
+    const h = traceSidebar.offsetHeight;
+    traceLayout.style.setProperty('--trace-vp-max-h', Math.max(240, Math.round(h || 0)) + 'px');
+  }
+
+  function afterTraceViewportCapSync() {
+    requestAnimationFrame(() => {
+      clampTraceViewportScroll();
+      refreshViewportPanClass();
+      if (baseNatW) fitPreviewZoomToViewport();
+    });
+  }
+
+  function getTraceViewportScrollLimits() {
+    if (!traceViewport || !traceZoomSizer || !baseNatW || !baseNatH) {
+      return { maxSL: 0, maxST: 0 };
+    }
+    const cs = getComputedStyle(traceViewport);
+    const px = (v) => parseFloat(v) || 0;
+    const innerW = traceViewport.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight);
+    const innerH = traceViewport.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom);
+    const cw = traceZoomSizer.offsetWidth;
+    const ch = traceZoomSizer.offsetHeight;
+    return {
+      maxSL: Math.max(0, cw - innerW),
+      maxST: Math.max(0, ch - innerH)
+    };
+  }
+
+  function clampTraceViewportScroll() {
+    if (!traceViewport) return;
+    const { maxSL, maxST } = getTraceViewportScrollLimits();
+    traceViewport.scrollLeft = Math.min(maxSL, Math.max(0, traceViewport.scrollLeft));
+    traceViewport.scrollTop = Math.min(maxST, Math.max(0, traceViewport.scrollTop));
+  }
+
+  function refreshViewportPanClass() {
+    if (!traceViewport) return;
+    const { maxSL, maxST } = getTraceViewportScrollLimits();
+    const can = !!(baseNatW && baseNatH && (maxSL > 0.5 || maxST > 0.5));
+    traceViewport.classList.toggle('trace-viewport--pannable', can);
+  }
+
+  function scheduleRefreshViewportPanClass() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        clampTraceViewportScroll();
+        refreshViewportPanClass();
+      });
+    });
+  }
+
+  function updatePreviewZoomUI() {
+    if (!baseNatW || !baseNatH) {
+      traceZoomSizer.style.width = '0';
+      traceZoomSizer.style.height = '0';
+      traceZoomInner.style.transform = '';
+      traceZoomReadout.textContent = '—';
+      traceZoomOut.disabled = true;
+      traceZoomIn.disabled = true;
+      traceViewport.classList.remove('trace-viewport--pannable', 'trace-viewport--dragging');
+      return;
+    }
+    traceZoomInner.style.transform = 'scale(' + previewZoom + ')';
+    traceZoomSizer.style.width = Math.max(1, Math.floor(baseNatW * previewZoom)) + 'px';
+    traceZoomSizer.style.height = Math.max(1, Math.floor(baseNatH * previewZoom)) + 'px';
+    traceZoomReadout.textContent = Math.round(previewZoom * 100) + '%';
+    traceZoomOut.disabled = previewZoom <= 0.105;
+    traceZoomIn.disabled = previewZoom >= 7.95;
+    scheduleRefreshViewportPanClass();
+  }
+
+  function fitPreviewZoomToViewport() {
+    if (!baseNatW || !baseNatH) return;
+    function measureZoom() {
+      const cs = getComputedStyle(traceViewport);
+      const px = (v) => parseFloat(v) || 0;
+      const innerW = traceViewport.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight);
+      const innerH = traceViewport.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom);
+      const gap = 8;
+      const zw = Math.max(80, innerW - gap * 2);
+      const zh = Math.max(80, innerH - gap * 2);
+      return Math.min(zw / baseNatW, zh / baseNatH, 8);
+    }
+    requestAnimationFrame(() => {
+      previewZoom = Math.max(0.05, measureZoom());
+      updatePreviewZoomUI();
+      requestAnimationFrame(() => {
+        previewZoom = Math.max(0.05, measureZoom());
+        updatePreviewZoomUI();
+      });
+    });
+  }
+
+  function previewZoomStep(zoomIn) {
+    if (!baseNatW) return;
+    if (zoomIn) previewZoom = Math.min(8, previewZoom * PREVIEW_ZOOM_STEP);
+    else previewZoom = Math.max(0.1, previewZoom / PREVIEW_ZOOM_STEP);
+    updatePreviewZoomUI();
+  }
+
+  function blurdeltaFor(blur) {
+    return Math.min(256, 20 + blur * 4);
+  }
+
+  function curveTolerancesFromOpt(v) {
+    const t = 0.15 + (v / 99) * 4.25;
+    return { ltres: t, qtres: t };
+  }
+
+  function smoothnessToFlags(s) {
+    const n = parseInt(s, 10);
+    if (n >= 3) return { rightangleenhance: false, linefilter: true };
+    return { rightangleenhance: true, linefilter: false };
+  }
+
+  function readTraceParams() {
+    const co = parseInt(curveOptSlider.value, 10);
+    const { ltres, qtres } = curveTolerancesFromOpt(co);
+    const sm = smoothnessToFlags(smoothnessSlider.value);
+    return {
+      colors: 2,
+      blur: parseInt(blurSlider.value, 10),
+      blurdelta: blurdeltaFor(parseInt(blurSlider.value, 10)),
+      threshold: parseInt(thresholdSlider.value, 10),
+      invert: invertChk.checked,
+      pathomit: parseInt(pathomitSlider.value, 10),
+      ltres,
+      qtres,
+      rightangleenhance: sm.rightangleenhance,
+      linefilter: sm.linefilter,
+      layering: 1,
+    };
+  }
+
+  function syncSliderLabels() {
+    blurVal.textContent = blurSlider.value;
+    thresholdVal.textContent = thresholdSlider.value;
+    pathomitVal.textContent = pathomitSlider.value;
+    smoothnessVal.textContent = smoothnessSlider.value;
+    curveOptVal.textContent = curveOptSlider.value;
+    const th = parseInt(thresholdSlider.value, 10);
+    thresholdGradient.style.setProperty('--thumb-pct', (th / 255 * 100) + '%');
+  }
+
+  function copyImageData(src) {
+    return new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
+  }
+
+  /** Предобработка как перед трассировкой: копия → blur → (в Ч/Б) порог. */
+  function buildPreprocessedImageData() {
+    const p = readTraceParams();
+    let imgd = copyImageData(currentImgData);
+    if (p.blur > 0) imgd = ImageTracer.blur(imgd, p.blur, p.blurdelta);
+    imgd = thresholdImageData(imgd, p.threshold, p.invert);
+    return imgd;
+  }
+
+  function imageDataToPngUrl(imgd) {
+    const c = document.createElement('canvas');
+    c.width = imgd.width;
+    c.height = imgd.height;
+    c.getContext('2d').putImageData(imgd, 0, 0);
+    return c.toDataURL('image/png');
+  }
+
+  function thresholdImageData(imgData, thresh, invert) {
+    const src = imgData.data;
+    const out = new Uint8ClampedArray(src.length);
+    for (let i = 0; i < src.length; i += 4) {
+      const a = src[i + 3];
+      let luma = a < 64
+        ? 255
+        : (src[i] * 0.299 + src[i + 1] * 0.587 + src[i + 2] * 0.114) * (a / 255) + 255 * (1 - a / 255);
+      if (invert) luma = 255 - luma;
+      const v = luma < thresh ? 0 : 255;
+      out[i] = out[i + 1] = out[i + 2] = v;
+      out[i + 3] = 255;
+    }
+    return new ImageData(out, imgData.width, imgData.height);
+  }
+
+  function refreshPreviewBase() {
+    if (!currentFile) return;
+    const src = previewSource.value;
+    if (src === 'original') {
+      previewBase.src = origImg.src;
+    } else if (src === 'processed') {
+      previewBase.src = processedPreviewUrl || origImg.src;
+    } else {
+      previewBase.src = svgBlobUrl || '';
+    }
+    svgPanelWrap.classList.toggle('fade-base', fadeBaseChk.checked);
+  }
+
+  const pathOverlaySvgCache = new Map();
+
+  function pathOverlayCacheKey() {
+    return traceGen + '|' + (showPathChk.checked ? '1' : '0') + (showPointsChk.checked ? '1' : '0');
+  }
+
+  function clearPathOverlayCache() {
+    pathOverlaySvgCache.clear();
+  }
+
+  function refreshPathOverlay() {
+    pathOverlayHost.innerHTML = '';
+    if (!currentSvgStr || (!showPathChk.checked && !showPointsChk.checked)) return;
+
+    const key = pathOverlayCacheKey();
+    const cached = pathOverlaySvgCache.get(key);
+    if (cached) {
+      pathOverlayHost.appendChild(cached.cloneNode(true));
+      return;
+    }
+
+    const doc = new DOMParser().parseFromString(currentSvgStr, 'image/svg+xml');
+    const svgIn = doc.querySelector('svg');
+    if (!svgIn) return;
+
+    const vb = svgIn.getAttribute('viewBox');
+    const w = svgIn.getAttribute('width');
+    const h = svgIn.getAttribute('height');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    if (vb) svg.setAttribute('viewBox', vb);
+    else if (w && h) svg.setAttribute('viewBox', '0 0 ' + parseFloat(w) + ' ' + parseFloat(h));
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+    const vbParts = (svg.getAttribute('viewBox') || '0 0 100 100').trim().split(/\s+/);
+    const vbw = parseFloat(vbParts[2]) || 100;
+    const vbh = parseFloat(vbParts[3]) || 100;
+    const sw = Math.max(0.5, Math.min(vbw, vbh) * 0.004);
+
+    const paths = svgIn.querySelectorAll('path');
+    paths.forEach(p => {
+      const np = p.cloneNode(true);
+      np.removeAttribute('style');
+      if (showPathChk.checked) {
+        np.setAttribute('fill', 'none');
+        np.setAttribute('stroke', '#f43f5e');
+        np.setAttribute('stroke-width', String(sw));
+        np.setAttribute('stroke-linejoin', 'round');
+        np.setAttribute('stroke-linecap', 'round');
+      } else {
+        np.setAttribute('fill', 'none');
+        np.setAttribute('stroke', 'none');
+      }
+      svg.appendChild(np);
+    });
+
+    if (showPointsChk.checked) {
+      const ptR = sw * 1.25;
+      const step = Math.max(4, Math.min(vbw, vbh) / 80);
+      const pts = [];
+      svg.querySelectorAll('path').forEach(pathEl => {
+        try {
+          const len = pathEl.getTotalLength();
+          if (!len || !isFinite(len)) return;
+          for (let d = 0; d <= len; d += step) {
+            pts.push(pathEl.getPointAtLength(d));
+          }
+        } catch (e) { /* ignore */ }
+      });
+      pts.forEach(pt => {
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', pt.x);
+        c.setAttribute('cy', pt.y);
+        c.setAttribute('r', ptR);
+        c.setAttribute('fill', '#38bdf8');
+        c.setAttribute('stroke', '#0c4a6e');
+        c.setAttribute('stroke-width', sw * 0.28);
+        svg.appendChild(c);
+      });
+    }
+
+    pathOverlayHost.appendChild(svg);
+    pathOverlaySvgCache.set(key, svg.cloneNode(true));
+  }
+
+  let pathOverlayRefreshGen = 0;
+
+  function setPathOverlayRefreshing(on) {
+    if (on) {
+      if (traceViewport.classList.contains('retracing')) return;
+      traceViewport.classList.add('overlay-refreshing');
+      traceViewport.setAttribute('aria-busy', 'true');
+    } else {
+      traceViewport.classList.remove('overlay-refreshing');
+      if (!traceViewport.classList.contains('retracing')) {
+        traceViewport.removeAttribute('aria-busy');
+      }
+    }
+  }
+
+  function scheduleRefreshPathOverlay() {
+    pathOverlayRefreshGen += 1;
+    const gen = pathOverlayRefreshGen;
+    if (
+      currentSvgStr &&
+      (showPathChk.checked || showPointsChk.checked) &&
+      pathOverlaySvgCache.has(pathOverlayCacheKey())
+    ) {
+      refreshPathOverlay();
+      return;
+    }
+    setPathOverlayRefreshing(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (gen !== pathOverlayRefreshGen) return;
+        try {
+          refreshPathOverlay();
+        } catch (err) {
+          console.error(err);
+        } finally {
+          if (gen === pathOverlayRefreshGen) {
+            setPathOverlayRefreshing(false);
+          }
+        }
+      });
+    });
+  }
+
+  function wireRetrace(el) {
+    el.addEventListener('input', () => { syncSliderLabels(); scheduleRetrace(90); });
+    el.addEventListener('change', () => { syncSliderLabels(); scheduleRetrace(90); });
+  }
+
+  wireRetrace(blurSlider);
+  wireRetrace(thresholdSlider);
+  wireRetrace(pathomitSlider);
+  wireRetrace(smoothnessSlider);
+  wireRetrace(curveOptSlider);
+
+  function bindCheckboxInput(el, fn) {
+    el.addEventListener('change', fn);
+    el.addEventListener('input', fn);
+  }
+
+  function applyFadeClass() {
+    svgPanelWrap.classList.toggle('fade-base', fadeBaseChk.checked);
+  }
+
+  previewSource.addEventListener('change', () => refreshPreviewBase());
+
+  bindCheckboxInput(showPathChk, () => scheduleRefreshPathOverlay());
+  bindCheckboxInput(showPointsChk, () => scheduleRefreshPathOverlay());
+  bindCheckboxInput(fadeBaseChk, applyFadeClass);
+  bindCheckboxInput(invertChk, () => scheduleRetrace(90));
+
+  let panDrag = false;
+  let panPtrId = null;
+  let panStartX = 0;
+  let panStartY = 0;
+  let panStartSL = 0;
+  let panStartST = 0;
+
+  traceViewport.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('.canvas-toolbar')) return;
+    if (!traceViewport.classList.contains('trace-viewport--pannable')) return;
+    panDrag = true;
+    panPtrId = e.pointerId;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    panStartSL = traceViewport.scrollLeft;
+    panStartST = traceViewport.scrollTop;
+    traceViewport.setPointerCapture(e.pointerId);
+    traceViewport.classList.add('trace-viewport--dragging');
+  });
+
+  traceViewport.addEventListener('pointermove', (e) => {
+    if (!panDrag || e.pointerId !== panPtrId) return;
+    e.preventDefault();
+    traceViewport.scrollLeft = panStartSL - (e.clientX - panStartX);
+    traceViewport.scrollTop = panStartST - (e.clientY - panStartY);
+    clampTraceViewportScroll();
+  });
+
+  function endViewportPan(e) {
+    if (!panDrag || e.pointerId !== panPtrId) return;
+    panDrag = false;
+    panPtrId = null;
+    traceViewport.classList.remove('trace-viewport--dragging');
+    try {
+      traceViewport.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+  }
+
+  traceViewport.addEventListener('pointerup', endViewportPan);
+  traceViewport.addEventListener('pointercancel', endViewportPan);
+
+  traceViewport.addEventListener('scroll', () => {
+    clampTraceViewportScroll();
+  }, { passive: true });
+
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => {
+      requestAnimationFrame(() => {
+        clampTraceViewportScroll();
+        refreshViewportPanClass();
+      });
+    }).observe(traceViewport);
+    if (traceSidebar) {
+      new ResizeObserver(() => {
+        if (getComputedStyle(editorWrap).display === 'none') return;
+        syncTraceViewportCapFromSidebar();
+        afterTraceViewportCapSync();
+      }).observe(traceSidebar);
+    }
+    if (traceLayout) {
+      new ResizeObserver(() => {
+        if (getComputedStyle(editorWrap).display === 'none') return;
+        syncTraceViewportCapFromSidebar();
+        afterTraceViewportCapSync();
+      }).observe(traceLayout);
+    }
+  }
+
+  let traceVpCapResizeTimer = null;
+  window.addEventListener('resize', () => {
+    if (!editorWrap || getComputedStyle(editorWrap).display === 'none') return;
+    clearTimeout(traceVpCapResizeTimer);
+    traceVpCapResizeTimer = setTimeout(() => {
+      syncTraceViewportCapFromSidebar();
+      afterTraceViewportCapSync();
+    }, 80);
+  });
+
+  traceZoomIn.addEventListener('click', () => previewZoomStep(true));
+  traceZoomOut.addEventListener('click', () => previewZoomStep(false));
+  traceZoomFit.addEventListener('click', () => fitPreviewZoomToViewport());
+
+  syncSliderLabels();
+  updatePreviewZoomUI();
+
+  // ── Upload ────────────────────────────────────────────────────────────
+  uploadPickBtn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files && fileInput.files[0]) loadFile(fileInput.files[0]);
+  });
+
+  ['dragenter', 'dragover'].forEach(evt =>
+    uploadZone.addEventListener(evt, e => { e.preventDefault(); uploadZone.classList.add('dragover'); })
+  );
+  ['dragleave', 'drop'].forEach(evt =>
+    uploadZone.addEventListener(evt, e => { e.preventDefault(); uploadZone.classList.remove('dragover'); })
+  );
+  uploadZone.addEventListener('drop', e => {
+    const f = e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+  document.addEventListener('paste', e => {
+    const item = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'));
+    if (item) loadFile(item.getAsFile());
+  });
+
+  // ── File loading ──────────────────────────────────────────────────────
+  function loadFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      showNotice('Поддерживаются только JPG, PNG и WebP', 'error');
+      return;
+    }
+    currentFile = file;
+    clearNotice();
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      // onload назначается ДО src — иначе браузер может выстрелить load синхронно
+      // (повторный файл / data URL из кеша) и обработчик не успеет назначиться
+      origImg.onload = () => {
+        buildImageData(origImg);
+        showEditor();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            syncTraceViewportCapFromSidebar();
+            syncSliderLabels();
+            runTrace();
+            afterTraceViewportCapSync();
+          });
+        });
+      };
+      origImg.src = e.target.result;
+      fileNameEl.textContent = file.name;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function buildImageData(imgEl) {
+    const MAX = 1200;
+    let w = imgEl.naturalWidth, h = imgEl.naturalHeight;
+    if (w > MAX || h > MAX) {
+      const s = MAX / Math.max(w, h);
+      w = Math.round(w * s);
+      h = Math.round(h * s);
+    }
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(imgEl, 0, 0, w, h);
+    currentImgData = c.getContext('2d').getImageData(0, 0, w, h);
+  }
+
+  previewBase.addEventListener('load', () => {
+    syncTraceViewportCapFromSidebar();
+    syncPreviewPixelSize();
+    const key = baseNatW + 'x' + baseNatH;
+    if (key !== lastPreviewNaturalKey) {
+      lastPreviewNaturalKey = key;
+      fitPreviewZoomToViewport();
+    } else {
+      updatePreviewZoomUI();
+    }
+    /* Синхронно: после runTrace уже вызван refreshPathOverlay(); load снова дернётся
+       при смене src — планировщик с оверлеем дал бы лишний пересчёт и мигание «Обновление…». */
+    refreshPathOverlay();
+  });
+
+  // ── Tracing ───────────────────────────────────────────────────────────
+  function scheduleRetrace(delay) {
+    if (!currentImgData) return;
+    clearTimeout(retaceTimer);
+    retaceTimer = setTimeout(() => runTrace(), delay ?? 120);
+  }
+
+  function runTrace() {
+    if (!currentImgData) return;
+    if (tracing) {
+      runAgainAfterTrace = true;
+      return;
+    }
+    const myGen = ++traceGen;
+    tracing = true;
+    downloadBtn.disabled = true;
+
+    traceViewport.classList.remove('overlay-refreshing');
+    traceViewport.classList.add('retracing');
+    traceViewport.setAttribute('aria-busy', 'true');
+
+    setTimeout(() => {
+      try {
+        if (myGen !== traceGen) return;
+        clearPathOverlayCache();
+
+        const p = readTraceParams();
+        const imgData = buildPreprocessedImageData();
+
+        if (myGen !== traceGen) return;
+        processedPreviewUrl = imageDataToPngUrl(imgData);
+
+        const svgStr = ImageTracer.imagedataToSVG(imgData, {
+          numberofcolors:   p.colors,
+          blurradius:       0,
+          blurdelta:        p.blurdelta,
+          ltres:            p.ltres,
+          qtres:            p.qtres,
+          pathomit:         p.pathomit,
+          rightangleenhance: p.rightangleenhance,
+          linefilter:       p.linefilter,
+          layering:         p.layering,
+          colorsampling:    2, // 2 = скан пикселей → детерминированная палитра из реальных цветов изображения
+          colorquantcycles: 3,
+          roundcoords:      2,
+          strokewidth:      0,
+          scale:            1,
+        });
+
+        if (myGen !== traceGen) return;
+        currentSvgStr = svgStr;
+
+        const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+        if (svgBlobUrl) URL.revokeObjectURL(svgBlobUrl);
+        svgBlobUrl = URL.createObjectURL(blob);
+
+        syncSliderLabels();
+        refreshPreviewBase();
+        refreshPathOverlay();
+
+        downloadBtn.disabled = false;
+      } catch (err) {
+        showNotice('Ошибка трассировки: ' + err.message, 'error');
+      } finally {
+        traceViewport.classList.remove('retracing');
+        traceViewport.removeAttribute('aria-busy');
+        if (myGen === traceGen) {
+          tracing = false;
+          if (runAgainAfterTrace) {
+            runAgainAfterTrace = false;
+            setTimeout(runTrace, 0);
+          }
+        }
+      }
+    }, 20);
+  }
+
+  /** Яркость 0–255; null — не трогаем (none, url(), …) */
+  function luminanceFromColorStr(str) {
+    if (!str) return null;
+    const s = String(str).trim().toLowerCase();
+    if (s === 'none' || s === 'transparent' || s.startsWith('url(')) return null;
+    if (s === 'currentcolor') return 0;
+    if (s.startsWith('#')) {
+      let h = s.slice(1);
+      if (h.length === 3) h = h.split('').map(c => c + c).join('');
+      if (h.length !== 6) return 128;
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      if ([r, g, b].some(n => Number.isNaN(n))) return 128;
+      return 0.299 * r + 0.587 * g + 0.114 * b;
+    }
+    const m = s.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+    if (m) return 0.299 * +m[1] + 0.587 * +m[2] + 0.114 * +m[3];
+    return 128;
+  }
+
+  function bwHexFromLum(lum) {
+    return lum < 140 ? '#000000' : '#ffffff';
+  }
+
+  /** Нормализация заливок/обводок в #000 / #fff при скачивании. */
+  function svgToMonochromeDownload(svgStr) {
+    try {
+      const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
+      if (doc.querySelector('parsererror')) return svgStr;
+      const root = doc.documentElement;
+      if (!root || root.nodeName.toLowerCase() !== 'svg') return svgStr;
+
+      root.querySelectorAll('*').forEach(el => {
+        ['fill', 'stroke'].forEach(attr => {
+          const v = el.getAttribute(attr);
+          if (!v) return;
+          const lum = luminanceFromColorStr(v);
+          if (lum === null) return;
+          el.setAttribute(attr, bwHexFromLum(lum));
+        });
+        const st = el.getAttribute('style');
+        if (!st) return;
+        const next = st.split(';').map(part => {
+          const p = part.trim();
+          const idx = p.indexOf(':');
+          if (idx === -1) return p;
+          const name = p.slice(0, idx).trim().toLowerCase();
+          if (name !== 'fill' && name !== 'stroke') return p;
+          const val = p.slice(idx + 1).trim();
+          const lum = luminanceFromColorStr(val);
+          if (lum === null) return p;
+          return name + ':' + bwHexFromLum(lum);
+        }).filter(Boolean).join('; ');
+        if (next) el.setAttribute('style', next);
+        else el.removeAttribute('style');
+      });
+
+      return new XMLSerializer().serializeToString(root);
+    } catch (e) {
+      return svgStr;
+    }
+  }
+
+  // ── Download ──────────────────────────────────────────────────────────
+  downloadBtn.addEventListener('click', () => {
+    if (!currentSvgStr || !currentFile) return;
+    const out = svgToMonochromeDownload(currentSvgStr);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([out], { type: 'image/svg+xml' }));
+    a.download = currentFile.name.replace(/\.[^.]+$/, '') + '.svg';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // ── Reset ─────────────────────────────────────────────────────────────
+  resetBtn.addEventListener('click', () => {
+    if (tracing) return;
+    traceGen++;
+    runAgainAfterTrace = false;
+    currentFile = currentSvgStr = currentImgData = null;
+    processedPreviewUrl = null;
+    pathOverlayHost.innerHTML = '';
+    pathOverlayRefreshGen++;
+    clearPathOverlayCache();
+    traceViewport.classList.remove('retracing', 'overlay-refreshing');
+    traceViewport.removeAttribute('aria-busy');
+    if (traceLayout) traceLayout.style.removeProperty('--trace-vp-max-h');
+    lastPreviewNaturalKey = '';
+    baseNatW = baseNatH = 0;
+    previewZoom = 1;
+    previewBase.style.width = '';
+    previewBase.style.height = '';
+    traceZoomInner.style.transform = '';
+    updatePreviewZoomUI();
+    if (svgBlobUrl) { URL.revokeObjectURL(svgBlobUrl); svgBlobUrl = null; }
+    fileInput.value = '';
+    origImg.src = '';
+    previewBase.removeAttribute('src');
+    fileNameEl.textContent = '';
+    showUpload();
+    clearNotice();
+  });
+
+  // ── UI helpers ────────────────────────────────────────────────────────
+  function showUpload() {
+    uploadZone.style.display = '';
+    editorWrap.style.display = 'none';
+    uploadZone.classList.remove('dragover');
+  }
+  function showEditor() {
+    uploadZone.style.display = 'none';
+    editorWrap.style.display = 'block';
+  }
+  function showNotice(msg, type) {
+    uploadNotice.textContent = msg;
+    uploadNotice.className = 'upload-notice visible' + (type ? ' ' + type : '');
+  }
+  function clearNotice() {
+    uploadNotice.textContent = '';
+    uploadNotice.className = 'upload-notice';
+  }
+
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.462.0/dist/umd/lucide.min.js" integrity="sha384-8nT3SpButyvenpAdKYPJzXdSz3zidMGduMoaMvwjKnAWVv238n6P1mhveiJJQWrV" crossorigin="anonymous" defer onload="window.lucide&&window.lucide.createIcons()"></script>
+</body>
+</html>

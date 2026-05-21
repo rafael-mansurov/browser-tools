@@ -2,7 +2,7 @@
   'use strict';
 
   var ARROW_SVG =
-    '<svg class="tool-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+    '<i data-lucide="chevron-right" class="tool-arrow" style="width:18px;height:18px;stroke-width:1.5" aria-hidden="true"></i>';
 
   var TOOLS = [
     {
@@ -39,26 +39,26 @@
       feats: ['Пакетная обработка', 'HEIC, JPG, PNG → WebP', 'Слайдер качества'],
     },
     {
-      href: 'compress-video.html',
-      variant: 'blue',
+      href: 'edit-image.html',
+      variant: 'cyan',
       hubCats: 'all',
-      icon: 'clapperboard',
-      badge: 'Видео',
-      title: 'Сжать видео',
+      icon: 'crop',
+      badge: 'Фото',
+      title: 'Обрезать и повернуть',
       desc:
-        'Сжатие и\u00a0оптимизация прямо в\u00a0браузере: на\u00a0100% — без перекодирования (только упаковка), ниже — сильнее сжатие. MP4, WebM, MOV и\u00a0другие форматы',
-      feats: ['Локально в браузере', 'Слайдер качества', 'Прогресс сжатия'],
+        'Загружаешь фото, обрезаешь рамкой, поворачиваешь на 90° или отражаешь — и скачиваешь результат. Всё локально, без загрузки на сервер',
+      feats: ['Обрезка перетаскиванием', 'Поворот и отражение', 'JPG, PNG, WebP, HEIC'],
     },
     {
-      href: 'png-to-svg.html',
-      variant: 'violet',
-      hubCats: 'all context',
-      icon: 'file-image',
-      badge: 'SVG',
-      title: 'Изображение в SVG',
+      href: 'qr-generator.html',
+      variant: 'cyan',
+      hubCats: 'all',
+      icon: 'qr-code',
+      badge: 'QR',
+      title: 'Генератор QR-кода',
       desc:
-        'Векторизация растра в браузере: порог, трассировка и превью контура. Можно поставить Quick Action или пункт в меню Windows',
-      feats: ['Локально в браузере', 'JPG, PNG, WebP', 'Контекстное меню (опционально)'],
+        'Создаёшь QR для ссылки или текста, выбираешь стиль модулей и скачиваешь PNG/SVG. Есть цельный закруглённый стиль',
+      feats: ['Цвета и поля', 'PNG и SVG экспорт', 'Локально в браузере'],
     },
   ];
 

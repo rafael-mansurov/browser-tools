@@ -50,7 +50,7 @@
       feats: ['Обрезка перетаскиванием', 'Поворот и отражение', 'JPG, PNG, WebP, HEIC'],
     },
     {
-      href: 'https://rafael-mansurov.github.io/trace-icon/',
+      href: 'https://rafael-mansurov.github.io/trace-logos/',
       variant: 'violet',
       hubCats: 'all',
       icon: 'library',
